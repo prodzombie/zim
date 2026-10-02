@@ -11,6 +11,8 @@ pub fn main(init: std.process.Init) !void {
     }
 
     const path = args[1];
+    const content = try std.Io.Dir.cwd().readFileAlloc(init.io, path, init.gpa, .limited(1024 * 1024));
+    defer init.gpa.free(content);
 
     var buffer: [1024]u8 = undefined;
     var stdout: std.Io.File.Writer = .init(
@@ -18,6 +20,6 @@ pub fn main(init: std.process.Init) !void {
         init.io,
         &buffer,
     );
-    try stdout.interface.print("Opening: {s}\n", .{path});
+    try stdout.interface.writeAll(content);
     try stdout.interface.flush();
 }
