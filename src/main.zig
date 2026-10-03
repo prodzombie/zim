@@ -50,6 +50,8 @@ pub fn main(init: std.process.Init) !void {
             switch (key[0]) {
                 'h' => editor.moveHorizontal(.left),
                 'l' => editor.moveHorizontal(.right),
+                'j' => editor.moveVertical(.down),
+                'k' => editor.moveVertical(.up),
                 else => {},
             }
             try terminal.render(&editor, &stdout.interface);
