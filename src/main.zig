@@ -5,6 +5,18 @@ const c = @cImport({
     @cInclude("unistd.h");
 });
 
+const Terminal = struct {
+    const enter_alternate_screen = "\x1b[?1049h";
+    const leave_alternate_screen = "\x1b[?1049l";
+    const clear_screen = "\x1b[2J";
+    const cursor_home = "\x1b[H";
+
+    /// Positions the cursor using one-based terminal coordinates.
+    fn moveCursor(writer: *std.Io.Writer, row: usize, column: usize) !void {
+        try writer.print("\x1b[{d};{d}H", .{ row, column });
+    }
+};
+
 pub fn main(init: std.process.Init) !void {
     const allocator = init.arena.allocator();
     const args = try init.minimal.args.toSlice(allocator);
@@ -54,11 +66,11 @@ pub fn main(init: std.process.Init) !void {
     }
 
     defer {
-        stdout.interface.writeAll("\x1b[?1049l") catch {};
+        stdout.interface.writeAll(Terminal.leave_alternate_screen) catch {};
         stdout.interface.flush() catch {};
     }
 
-    try stdout.interface.writeAll("\x1b[?1049h");
+    try stdout.interface.writeAll(Terminal.enter_alternate_screen);
     try render(&editor, &stdout.interface);
 
     while (true) {
@@ -81,7 +93,8 @@ pub fn main(init: std.process.Init) !void {
 }
 
 pub fn render(editor: *const zim.Editor, writer: *std.Io.Writer) !void {
-    try writer.writeAll("\x1b[2J\x1b[H");
+    try writer.writeAll(Terminal.clear_screen);
+    try writer.writeAll(Terminal.cursor_home);
 
     var lines = std.mem.splitScalar(u8, editor.content, '\n');
     var first = true;
@@ -104,6 +117,6 @@ pub fn render(editor: *const zim.Editor, writer: *std.Io.Writer) !void {
         }
     }
 
-    try writer.print("\x1b[{d};{d}H", .{ row, column });
+    try Terminal.moveCursor(writer, row, column);
     try writer.flush();
 }
