@@ -22,7 +22,7 @@ pub fn main(init: std.process.Init) !void {
         .{},
     };
 
-    const editor: zim.Editor = .{
+    var editor: zim.Editor = .{
         .content = content,
         .selections = selections[0..],
     };
@@ -62,6 +62,13 @@ pub fn main(init: std.process.Init) !void {
             &.{key[0..]},
         );
         if (count == 0) break;
-        if (key[0] == 'q') break;
+        if (editor.mode == .normal) {
+            if (key[0] == 'q') break;
+            switch (key[0]) {
+                'h' => editor.moveHorizontal(.left),
+                'l' => editor.moveHorizontal(.right),
+                else => {},
+            }
+        }
     }
 }
