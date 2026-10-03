@@ -33,8 +33,6 @@ pub fn main(init: std.process.Init) !void {
         init.io,
         &buffer,
     );
-    try stdout.interface.writeAll(editor.content);
-    try stdout.interface.flush();
 
     var original: c.struct_termios = undefined;
     if (c.tcgetattr(c.STDIN_FILENO, &original) != 0) {
@@ -55,6 +53,14 @@ pub fn main(init: std.process.Init) !void {
         }
     }
 
+    defer {
+        stdout.interface.writeAll("\x1b[?1049l") catch {};
+        stdout.interface.flush() catch {};
+    }
+
+    try stdout.interface.writeAll("\x1b[?1049h");
+    try render(&editor, &stdout.interface);
+
     while (true) {
         var key: [1]u8 = undefined;
         const count = try std.Io.File.stdin().readStreaming(
@@ -69,6 +75,35 @@ pub fn main(init: std.process.Init) !void {
                 'l' => editor.moveHorizontal(.right),
                 else => {},
             }
+            try render(&editor, &stdout.interface);
         }
     }
+}
+
+pub fn render(editor: *const zim.Editor, writer: *std.Io.Writer) !void {
+    try writer.writeAll("\x1b[2J\x1b[H");
+
+    var lines = std.mem.splitScalar(u8, editor.content, '\n');
+    var first = true;
+    while (lines.next()) |line| {
+        if (!first) try writer.writeAll("\r\n");
+        try writer.writeAll(line);
+        first = false;
+    }
+
+    const head = editor.selections[editor.primary_index].head;
+    var row: usize = 1;
+    var column: usize = 1;
+
+    for (editor.content[0..head]) |byte| {
+        if (byte == '\n') {
+            row += 1;
+            column = 1;
+        } else {
+            column += 1;
+        }
+    }
+
+    try writer.print("\x1b[{d};{d}H", .{ row, column });
+    try writer.flush();
 }
