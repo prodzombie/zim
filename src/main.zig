@@ -18,19 +18,29 @@ pub fn main(init: std.process.Init) !void {
     const content = try std.Io.Dir.cwd().readFileAlloc(init.io, path, init.gpa, .limited(1024 * 1024));
     defer init.gpa.free(content);
 
+    var selections = [_]zim.Selection{
+        .{},
+    };
+
+    const editor: zim.Editor = .{
+        .content = content,
+        .selections = selections[0..],
+    };
+
     var buffer: [1024]u8 = undefined;
     var stdout: std.Io.File.Writer = .init(
         .stdout(),
         init.io,
         &buffer,
     );
-    try stdout.interface.writeAll(content);
+    try stdout.interface.writeAll(editor.content);
     try stdout.interface.flush();
 
     var original: c.struct_termios = undefined;
     if (c.tcgetattr(c.STDIN_FILENO, &original) != 0) {
         return error.TerminalSettingsReadFailed;
     }
+
     var raw = original;
     c.cfmakeraw(&raw);
     raw.c_cc[c.VMIN] = 1;
@@ -41,7 +51,7 @@ pub fn main(init: std.process.Init) !void {
     }
     defer {
         if (c.tcsetattr(c.STDIN_FILENO, c.TCSAFLUSH, &original) != 0) {
-            std.debug.print("Could not restore terminal settings.\n:", .{});
+            std.debug.print("Could not restore terminal settings.\n", .{});
         }
     }
 

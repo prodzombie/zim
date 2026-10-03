@@ -1,18 +1,17 @@
-//! By convention, root.zig is the root source file when making a package.
-const std = @import("std");
-const Io = std.Io;
+pub const Mode = enum {
+    normal,
+    insert,
+};
 
-/// This is a documentation comment to explain the `printAnotherMessage` function below.
-///
-/// Accepting an `Io.Writer` instance is a handy way to write reusable code.
-pub fn printAnotherMessage(writer: *Io.Writer) Io.Writer.Error!void {
-    try writer.print("Welcome to zim.\n", .{});
-}
+pub const Selection = struct {
+    anchor: usize = 0,
+    head: usize = 0,
+    desired_column: usize = 0,
+};
 
-pub fn add(a: i32, b: i32) i32 {
-    return a + b;
-}
-
-test "basic add functionality" {
-    try std.testing.expect(add(3, 7) == 10);
-}
+pub const Editor = struct {
+    content: []const u8,
+    selections: []Selection,
+    primary_index: usize = 0,
+    mode: Mode = .normal,
+};
