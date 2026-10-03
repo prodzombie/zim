@@ -1,5 +1,9 @@
 const std = @import("std");
 const zim = @import("zim");
+const c = @cImport({
+    @cInclude("termios.h");
+    @cInclude("unistd.h");
+});
 
 pub fn main(init: std.process.Init) !void {
     const allocator = init.arena.allocator();
@@ -22,4 +26,32 @@ pub fn main(init: std.process.Init) !void {
     );
     try stdout.interface.writeAll(content);
     try stdout.interface.flush();
+
+    var original: c.struct_termios = undefined;
+    if (c.tcgetattr(c.STDIN_FILENO, &original) != 0) {
+        return error.TerminalSettingsReadFailed;
+    }
+    var raw = original;
+    c.cfmakeraw(&raw);
+    raw.c_cc[c.VMIN] = 1;
+    raw.c_cc[c.VTIME] = 0;
+
+    if (c.tcsetattr(c.STDIN_FILENO, c.TCSAFLUSH, &raw) != 0) {
+        return error.TerminalSettingsWriteFailed;
+    }
+    defer {
+        if (c.tcsetattr(c.STDIN_FILENO, c.TCSAFLUSH, &original) != 0) {
+            std.debug.print("Could not restore terminal settings.\n:", .{});
+        }
+    }
+
+    while (true) {
+        var key: [1]u8 = undefined;
+        const count = try std.Io.File.stdin().readStreaming(
+            init.io,
+            &.{key[0..]},
+        );
+        if (count == 0) break;
+        if (key[0] == 'q') break;
+    }
 }

@@ -70,6 +70,9 @@ pub fn build(b: *std.Build) void {
             // definition if desireable (e.g. firmware for embedded devices).
             .target = target,
             .optimize = optimize,
+            //This links the system C library. We need it to provide
+            //terminal-control functions.
+            .link_libc = true,
             // List of modules available for import in source files part of the
             // root module.
             .imports = &.{
